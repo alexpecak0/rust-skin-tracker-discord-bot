@@ -2,12 +2,26 @@
 require('dotenv').config();
 
 // Import necessary discord.js classes
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const { startAlertChecker } = require('./tasks/alertChecker'); // Import the checker
+const express = require('express'); // Require Express
 
 console.log('Bot is starting...');
+
+// --- Express Web Server Setup (for Render health checks) ---
+const app = express();
+const port = process.env.PORT || 3000; // Use Render's port or 3000 for local
+
+app.get('/', (req, res) => {
+  res.send('Rust Skin Bot is alive!'); // Simple response
+});
+
+app.listen(port, () => {
+  console.log(`[WebServer] Listening on port ${port}`);
+});
+// --- End Express Setup ---
 
 // Check if the bot token is available
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -75,14 +89,11 @@ client.on('interactionCreate', async interaction => {
 // --- End Interaction Handling ---
 
 // Log in to Discord with your client's token
-client.login(token)
-    .then(() => {
-        console.log('Login successful!');
-    })
-    .catch(error => {
-        console.error('Failed to log in:', error);
-        process.exit(1); // Exit if login fails
-    });
+if (token) {
+    client.login(token).catch(console.error); // Catch login errors
+} else {
+    console.error('ERROR: DISCORD_BOT_TOKEN is not set in the .env file!');
+}
 
 // Basic error handling
 client.on('error', console.error);
