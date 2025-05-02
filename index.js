@@ -6,33 +6,32 @@ const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const { startAlertChecker } = require('./tasks/alertChecker'); // Import the checker
-const http = require('http'); // Import the http module
-const supabase = require('./supabaseClient'); // Import Supabase client (Reverted path)
+const express = require('express'); // Require Express
 
 console.log('Bot is starting...');
 
 // --- Express Web Server Setup (for Render health checks) ---
-// const app = express();
-// // Render provides the PORT environment variable
-// const port = process.env.PORT || 3000; // Use Render's port or 3000 for local dev
-//
-// // Basic route for health checks
-// app.get('/', (req, res) => {
-//   // Respond to indicate the bot process is running
-//   res.status(200).send('Rust Skin Bot is alive!'); 
-// });
-//
-// app.listen(port, () => {
-//   console.log(`[WebServer] Listening on port ${port} for health checks.`);
-// });
+const app = express();
+// Render provides the PORT environment variable
+const port = process.env.PORT || 3000; // Use Render's port or 3000 for local dev
+
+// Basic route for health checks
+app.get('/', (req, res) => {
+  // Respond to indicate the bot process is running
+  res.status(200).send('Rust Skin Bot is alive!'); 
+});
+
+app.listen(port, () => {
+  console.log(`[WebServer] Listening on port ${port} for health checks.`);
+});
 // --- End Express Setup ---
 
 // Check if the bot token is available
-// const token = process.env.DISCORD_BOT_TOKEN; // This was redundant
-// if (!token) {
-//     console.error("Error: DISCORD_BOT_TOKEN not found in .env file.");
-//     process.exit(1); // Exit the process if the token is missing
-// }
+const token = process.env.DISCORD_BOT_TOKEN;
+if (!token) {
+    console.error("Error: DISCORD_BOT_TOKEN not found in .env file.");
+    process.exit(1); // Exit the process if the token is missing
+}
 
 // Create a new client instance with necessary intents
 const client = new Client({
@@ -64,8 +63,11 @@ for (const file of commandFiles) {
 
 // When the client is ready, run this code (only once)
 client.once('ready', () => {
-    console.log(`Ready! Logged in as ${client.user.tag}`);
-    startAlertChecker(client); // Start the alert checking loop
+    console.log(`Logged in as ${client.user.tag}!`);
+    console.log('Bot is ready!');
+
+    // Start the alert checker loop, passing the client instance
+    startAlertChecker(client, 5); // Check every 5 minutes (adjust interval as needed)
 });
 
 // --- Interaction Handling ---
@@ -84,61 +86,25 @@ client.on('interactionCreate', async interaction => {
 		await command.execute(interaction);
 	} catch (error) {
 		console.error('Error executing command:', error);
-        // Check if interaction is still valid before replying
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
-        } else {
-            await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-        }
+		await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
 	}
 });
 // --- End Interaction Handling ---
 
 // Log in to Discord with your client's token
-console.log('[Login] Attempting client.login()...');
-// Ensure we use DISCORD_TOKEN (or whatever is in your .env)
-const discordToken = process.env.DISCORD_TOKEN; 
-if (!discordToken) {
-    console.error("Error: DISCORD_TOKEN not found in .env file.");
-    process.exit(1);
+if (token) {
+    console.log('[Login] Attempting client.login()...'); // Log before calling login
+    client.login(token)
+        .then(() => {
+            console.log('[Login] client.login() promise resolved.'); // Log on successful promise resolution (before 'ready')
+        })
+        .catch(err => {
+            console.error('[Login] client.login() promise rejected:', err); // Log detailed error on rejection
+        });
+} else {
+    console.error('ERROR: DISCORD_BOT_TOKEN is not set in the .env file!');
+    process.exit(1); // Exit if token is missing
 }
-
-client.login(discordToken)
-    .then(() => console.log('[Login] Successfully logged in.'))
-    .catch(error => {
-        console.error('[Login] Failed to log in:', error);
-        // Added detailed logging for common intent issues
-        if (error.code === 'DisallowedIntents') {
-            console.error('[Login] Error: DisallowedIntents. Please ensure all necessary intents (Guilds, GuildMessages, MessageContent, DirectMessages) are enabled in your bot\'s application settings on the Discord Developer Portal.');
-        }
-        process.exit(1); // Exit if login fails
-    });
-
-// --- Render Health Check Server ---
-const PORT = process.env.PORT || 10000; // Use Render's port or default to 10000
-const server = http.createServer((req, res) => { // Store server instance
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('OK');
-});
-
-server.listen(PORT, () => {
-    console.log(`[WebServer] Listening on port ${PORT} for health checks.`);
-});
-// --- End Render Health Check Server ---
-
-// Optional: Graceful shutdown handling
-const gracefulShutdown = (signal) => {
-    console.log(`${signal} signal received: closing HTTP server and Discord client.`);
-    server.close(() => { // Close HTTP server first
-        console.log('HTTP server closed.');
-        client.destroy(); // Then close Discord connection
-        console.log('Discord client destroyed.');
-        process.exit(0);
-    });
-}
-
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Basic error handling
 client.on('error', err => {
