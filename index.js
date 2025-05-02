@@ -12,14 +12,17 @@ console.log('Bot is starting...');
 
 // --- Express Web Server Setup (for Render health checks) ---
 const app = express();
-const port = process.env.PORT || 3000; // Use Render's port or 3000 for local
+// Render provides the PORT environment variable
+const port = process.env.PORT || 3000; // Use Render's port or 3000 for local dev
 
+// Basic route for health checks
 app.get('/', (req, res) => {
-  res.send('Rust Skin Bot is alive!'); // Simple response
+  // Respond to indicate the bot process is running
+  res.status(200).send('Rust Skin Bot is alive!'); 
 });
 
 app.listen(port, () => {
-  console.log(`[WebServer] Listening on port ${port}`);
+  console.log(`[WebServer] Listening on port ${port} for health checks.`);
 });
 // --- End Express Setup ---
 
