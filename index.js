@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { startAlertChecker } = require('./tasks/alertChecker'); // Import the checker
 const http = require('http'); // Import the http module
-const supabase = require('./supabaseClient'); // Import Supabase client
+const supabase = require('../supabaseClient'); // Import Supabase client (Adjusted path for Render)
 
 console.log('Bot is starting...');
 
