@@ -93,15 +93,23 @@ client.on('interactionCreate', async interaction => {
 
 // Log in to Discord with your client's token
 if (token) {
-    client.login(token).catch(console.error); // Catch login errors
+    console.log('[Login] Attempting client.login()...'); // Log before calling login
+    client.login(token)
+        .then(() => {
+            console.log('[Login] client.login() promise resolved.'); // Log on successful promise resolution (before 'ready')
+        })
+        .catch(err => {
+            console.error('[Login] client.login() promise rejected:', err); // Log detailed error on rejection
+        });
 } else {
     console.error('ERROR: DISCORD_BOT_TOKEN is not set in the .env file!');
+    process.exit(1); // Exit if token is missing
 }
 
 // Basic error handling
-client.on('error', console.error);
-
-console.log('Attempting to log in...');
+client.on('error', err => {
+    console.error('[Client Error] Discord client emitted error:', err);
+});
 
 // Keep the placeholder comment or remove it
 // TODO: Add event handlers, command registration, API interaction, etc. 
